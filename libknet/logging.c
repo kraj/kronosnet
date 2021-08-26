@@ -209,6 +209,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	struct knet_log_msg msg;
 	size_t byte_cnt = 0;
 	int len;
+	int retry = 0;
 
 	if ((!knet_h) ||
 	    (subsystem == KNET_MAX_SUBSYSTEMS) ||
@@ -234,9 +235,28 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 #endif
 	va_end(ap);
 
+	msg.msg[sizeof(msg.msg) - 1] = 0;
+	fprintf(stderr, "[knet[%d]: %p]: [%s] %s: %.*s\n",
+			knet_h->logfd,
+			msg.knet_h,
+			knet_log_get_loglevel_name(msg.msglevel),
+			knet_log_get_subsystem_name(msg.subsystem),
+			KNET_MAX_LOG_MSG_SIZE, msg.msg);
+
+	retry = 0;
 	while (byte_cnt < sizeof(struct knet_log_msg)) {
+try_again:
 		len = write(knet_h->logfd, &msg, sizeof(struct knet_log_msg) - byte_cnt);
+		//len = sizeof(struct knet_log_msg);
 		if (len <= 0) {
+			if (errno == EAGAIN) {
+				if (retry < 5) {
+					retry++;
+					usleep(knet_h->threads_timer_res / 16);
+					goto try_again;
+				}
+			}
+			//fprintf(stderr, "logging: %d %zu %d %d %s\n", knet_h->logfd, sizeof(struct knet_log_msg), len, errno, strerror(errno));
 			goto out;
 		}
 
