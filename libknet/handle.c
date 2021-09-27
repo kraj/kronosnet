@@ -587,9 +587,16 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	}
 
 	/*
+	 * init logging throttling
+	 */
+	pthread_mutex_init(&knet_h->logging_mutex, NULL);
+	knet_h->throttle_level = KNET_LOG_MAX;
+	knet_h->throttled_msg_count = 0;
+	knet_h->saved_msg.subsystem = KNET_SUB_UNKNOWN;
+
+	/*
 	 * set internal threads time resolutions
 	 */
-
 	knet_h->threads_timer_res = KNET_THREADS_TIMER_RES;
 
 	/*

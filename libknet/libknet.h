@@ -2599,6 +2599,7 @@ uint8_t knet_log_get_subsystem_id(const char *name);
 #define KNET_LOG_WARN        1 /* recoverable errors/conditions */
 #define KNET_LOG_INFO        2 /* info, link up/down, config changes.. */
 #define KNET_LOG_DEBUG       3
+#define KNET_LOG_MAX         3
 
 /*
  * Convert between log level values and names

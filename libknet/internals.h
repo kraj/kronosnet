@@ -312,6 +312,12 @@ struct knet_handle {
 	uint64_t flags;
 	struct qb_list_head list;
 	const char *plugin_path;
+
+	/* Logging throttling */
+	pthread_mutex_t logging_mutex;
+	uint8_t throttle_level;
+	uint32_t throttled_msg_count;
+	struct knet_log_msg saved_msg;
 };
 
 struct handle_tracker {
