@@ -2561,6 +2561,7 @@ int knet_link_enable_status_change_notify(knet_handle_t knet_h,
 #define KNET_SUB_LZMACOMP      74 /* compress_lzma.c */
 #define KNET_SUB_BZIP2COMP     75 /* compress_bzip2.c */
 #define KNET_SUB_ZSTDCOMP      76 /* compress_zstd.c */
+#define KNET_SUB_NONE          77 /* Use by logging subsystem */
 
 #define KNET_SUB_UNKNOWN       UINT8_MAX - 1
 #define KNET_MAX_SUBSYSTEMS    UINT8_MAX
@@ -2599,7 +2600,7 @@ uint8_t knet_log_get_subsystem_id(const char *name);
 #define KNET_LOG_WARN        1 /* recoverable errors/conditions */
 #define KNET_LOG_INFO        2 /* info, link up/down, config changes.. */
 #define KNET_LOG_DEBUG       3
-#define KNET_LOG_MAX         3
+#define KNET_LOG_MAX         KNET_LOG_DEBUG
 
 /*
  * Convert between log level values and names

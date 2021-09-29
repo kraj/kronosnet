@@ -135,6 +135,7 @@ static void _destroy_locks(knet_handle_t knet_h)
 	pthread_mutex_destroy(&knet_h->threads_status_mutex);
 	pthread_mutex_destroy(&knet_h->handle_stats_mutex);
 	pthread_mutex_destroy(&knet_h->onwire_mutex);
+	pthread_mutex_destroy(&knet_h->logging_mutex);
 }
 
 static int _init_socks(knet_handle_t knet_h)
@@ -592,7 +593,7 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	pthread_mutex_init(&knet_h->logging_mutex, NULL);
 	knet_h->throttle_level = KNET_LOG_MAX;
 	knet_h->throttled_msg_count = 0;
-	knet_h->saved_msg.subsystem = KNET_SUB_UNKNOWN;
+	knet_h->saved_msg.subsystem = KNET_SUB_NONE;
 
 	/*
 	 * set internal threads time resolutions

@@ -49,6 +49,7 @@ static struct pretty_names subsystem_names[KNET_MAX_SUBSYSTEMS] =
 	{ "lzmacomp", KNET_SUB_LZMACOMP },
 	{ "bzip2comp", KNET_SUB_BZIP2COMP },
 	{ "zstdcomp", KNET_SUB_ZSTDCOMP },
+	{ "none", KNET_SUB_NONE },
 	{ "unknown", KNET_SUB_UNKNOWN }		/* unknown MUST always be last in this array */
 };
 
@@ -228,7 +229,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	if ((!knet_h) ||
 	    (subsystem == KNET_MAX_SUBSYSTEMS) ||
 	    (msglevel > knet_h->log_levels[subsystem]))
-			return;
+		return;
 
 	if (pthread_mutex_lock(&knet_h->logging_mutex) != 0) {
 		return;
@@ -250,10 +251,10 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 		goto out;
 
 	/* Try to send the saved msg first */
-	if (knet_h->saved_msg.subsystem != KNET_SUB_UNKNOWN) {
+	if (knet_h->saved_msg.subsystem != KNET_SUB_NONE) {
 		(void)send_formatted_msg(knet_h, &knet_h->saved_msg);
 		/* If it goes, it goes. If not - we tried. */
-		knet_h->saved_msg.subsystem = KNET_SUB_UNKNOWN;
+		knet_h->saved_msg.subsystem = KNET_SUB_NONE;
 	}
 
 	memset(&msg, 0, sizeof(struct knet_log_msg));
@@ -279,7 +280,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 		if (msglevel < knet_h->throttle_level) {
 			memcpy(&knet_h->saved_msg, &msg, sizeof(struct knet_log_msg)); // Save it
 		} else {
-			knet_h->saved_msg.subsystem = KNET_SUB_UNKNOWN; /* Unimportant */
+			knet_h->saved_msg.subsystem = KNET_SUB_NONE; /* Unimportant */
 		}
 
 		/* It's getting worse, throttle some more */
