@@ -15,6 +15,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "internals.h"
 #include "logging.h"
@@ -219,31 +220,47 @@ static int send_formatted_msg(knet_handle_t knet_h, struct knet_log_msg *msg)
 	return 0;
 }
 
+/* Per-thread throttling variables, to avoid locking */
+struct log_throttle_info {
+	struct knet_log_msg saved_msg;
+	uint8_t throttle_level;
+	uint32_t throttled_msg_count;
+};
+
 void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	     const char *fmt, ...)
 {
 	va_list ap;
 	struct knet_log_msg msg;
+	struct log_throttle_info *lt_info;
 	int len;
+
+	/* Make sure we have our throttle info */
+	lt_info = pthread_getspecific(knet_h->log_key);
+	if (!lt_info) {
+		lt_info = malloc(sizeof(struct log_throttle_info));
+		if (lt_info) {
+			memset(lt_info, 0, sizeof(struct log_throttle_info));
+			lt_info->saved_msg.subsystem = KNET_SUB_NONE;
+			lt_info->throttle_level = KNET_LOG_MAX;
+			pthread_setspecific(knet_h->log_key, lt_info);
+		}
+	}
 
 	if ((!knet_h) ||
 	    (subsystem == KNET_MAX_SUBSYSTEMS) ||
 	    (msglevel > knet_h->log_levels[subsystem]))
 		return;
 
-	if (pthread_mutex_lock(&knet_h->logging_mutex) != 0) {
-		return;
-	}
-
-	if (msglevel > knet_h->throttle_level) {
+	if (msglevel > lt_info->throttle_level) {
 		/* Unthrottle after 40 messages just in case it's all been DEBUG messages */
-		if (++knet_h->throttled_msg_count < 40) {
+		if (++lt_info->throttled_msg_count < 40) {
 			goto out;
 		}
 		/* Throttle back up one level */
-		if (knet_h->throttle_level <  KNET_LOG_MAX) {
-			knet_h->throttle_level++;
-			knet_h->throttled_msg_count = 0;
+		if (lt_info->throttle_level <  KNET_LOG_MAX) {
+			lt_info->throttle_level++;
+			lt_info->throttled_msg_count = 0;
 		}
 	}
 
@@ -251,10 +268,10 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 		goto out;
 
 	/* Try to send the saved msg first */
-	if (knet_h->saved_msg.subsystem != KNET_SUB_NONE) {
-		(void)send_formatted_msg(knet_h, &knet_h->saved_msg);
+	if (lt_info && lt_info->saved_msg.subsystem != KNET_SUB_NONE) {
+		(void)send_formatted_msg(knet_h, &lt_info->saved_msg);
 		/* If it goes, it goes. If not - we tried. */
-		knet_h->saved_msg.subsystem = KNET_SUB_NONE;
+		lt_info->saved_msg.subsystem = KNET_SUB_NONE;
 	}
 
 	memset(&msg, 0, sizeof(struct knet_log_msg));
@@ -276,25 +293,26 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	len = send_formatted_msg(knet_h, &msg);
 	if (len < 0 && errno == EAGAIN) {
 
-		/* If it's "important" then save it and try again later */
-		if (msglevel < knet_h->throttle_level) {
-			memcpy(&knet_h->saved_msg, &msg, sizeof(struct knet_log_msg)); // Save it
-		} else {
-			knet_h->saved_msg.subsystem = KNET_SUB_NONE; /* Unimportant */
+		if (lt_info) {
+			/* If it's "important" then save it and try again later */
+			if (msglevel < lt_info->throttle_level) {
+				memcpy(&lt_info->saved_msg, &msg, sizeof(struct knet_log_msg)); // Save it
+			} else {
+				lt_info->saved_msg.subsystem = KNET_SUB_NONE; /* Unimportant */
+				fprintf(stderr, "CC: Unimportant message lost: %d: %s\n", msg.msglevel, msg.msg);
+			}
 		}
-
 		/* It's getting worse, throttle some more */
-		if (knet_h->throttle_level > KNET_LOG_WARN) { // Don't throw away warnings and higher
-			knet_h->throttle_level--;
+		if (lt_info->throttle_level > KNET_LOG_WARN) { // Don't throw away warnings and higher
+			lt_info->throttle_level--;
 		}
 		goto out;
 	}
 
 	/* Something was sent, try to unblock a level */
-	if (len == 0 && knet_h->throttle_level < KNET_LOG_MAX) {
-		knet_h->throttle_level++;
+	if (len == 0 && lt_info->throttle_level < KNET_LOG_MAX) {
+		lt_info->throttle_level++;
 	}
 out:
-	pthread_mutex_unlock(&knet_h->logging_mutex);
 	return;
 }
