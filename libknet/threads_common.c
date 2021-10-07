@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "internals.h"
 #include "logging.h"
@@ -313,4 +314,15 @@ int knet_handle_get_threads_timer_res(knet_handle_t knet_h,
 
 	pthread_rwlock_unlock(&knet_h->global_rwlock);
 	return 0;
+}
+
+/* Called from pthread_cleanup_pop() as well as directly */
+void release_tls(void* data)
+{
+	void *lt_info;
+	knet_handle_t knet_h = data;
+
+	lt_info = pthread_getspecific(knet_h->log_key);
+	free(lt_info);
+	pthread_setspecific(knet_h->log_key, NULL);
 }

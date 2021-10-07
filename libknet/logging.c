@@ -252,7 +252,7 @@ void log_msg(knet_handle_t knet_h, uint8_t subsystem, uint8_t msglevel,
 	    (msglevel > knet_h->log_levels[subsystem]))
 		return;
 
-	if (msglevel > lt_info->throttle_level) {
+	if (lt_info && msglevel > lt_info->throttle_level) {
 		/* Unthrottle after 40 messages just in case it's all been DEBUG messages */
 		if (++lt_info->throttled_msg_count < 40) {
 			goto out;

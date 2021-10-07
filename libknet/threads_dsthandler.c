@@ -53,6 +53,7 @@ void *_handle_dst_link_handler_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
+	pthread_cleanup_push(release_tls, knet_h);
 	set_thread_status(knet_h, KNET_THREAD_DST_LINK, KNET_THREAD_STARTED);
 
 	while (!shutdown_in_progress(knet_h)) {
@@ -61,6 +62,6 @@ void *_handle_dst_link_handler_thread(void *data)
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_DST_LINK, KNET_THREAD_STOPPED);
-
+	pthread_cleanup_pop(1);
 	return NULL;
 }

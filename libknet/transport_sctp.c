@@ -694,6 +694,7 @@ static void *_sctp_connect_thread(void *data)
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
+	pthread_cleanup_push(release_tls, knet_h);
 	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_STARTED);
 
 	memset(&events, 0, sizeof(events));
@@ -750,7 +751,7 @@ static void *_sctp_connect_thread(void *data)
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_SCTP_CONN, KNET_THREAD_STOPPED);
-
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 
@@ -997,6 +998,7 @@ static void *_sctp_listen_thread(void *data)
 	sctp_handle_info_t *handle_info = knet_h->transports[KNET_TRANSPORT_SCTP];
 	struct epoll_event events[KNET_EPOLL_MAX_EVENTS];
 
+	pthread_cleanup_push(release_tls, knet_h);
 	set_thread_status(knet_h, KNET_THREAD_SCTP_LISTEN, KNET_THREAD_STARTED);
 
 	memset(&events, 0, sizeof(events));
@@ -1043,6 +1045,7 @@ static void *_sctp_listen_thread(void *data)
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_SCTP_LISTEN, KNET_THREAD_STOPPED);
+	pthread_cleanup_pop(1);
 
 	return NULL;
 }

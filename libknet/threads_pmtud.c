@@ -567,6 +567,7 @@ void *_handle_pmtud_link_thread(void *data)
 	int link_has_mtu;
 	int force_run = 0;
 
+	pthread_cleanup_push(release_tls, knet_h);
 	set_thread_status(knet_h, KNET_THREAD_PMTUD, KNET_THREAD_STARTED);
 
 	knet_h->data_mtu = calc_min_mtu(knet_h);
@@ -653,7 +654,7 @@ out_unlock:
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_PMTUD, KNET_THREAD_STOPPED);
-
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 

@@ -749,6 +749,7 @@ void *_handle_send_to_links_thread(void *data)
 	int8_t channel;
 	uint8_t onwire_ver;
 
+	pthread_cleanup_push(release_tls, knet_h);
 	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_STARTED);
 
 	memset(&events, 0, sizeof(events));
@@ -831,7 +832,7 @@ out_unlock:
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_TX, KNET_THREAD_STOPPED);
-
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 

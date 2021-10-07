@@ -1067,6 +1067,7 @@ void *_handle_recv_from_links_thread(void *data)
 	struct knet_mmsghdr msg[PCKT_RX_BUFS];
 	struct iovec iov_in[PCKT_RX_BUFS];
 
+	pthread_cleanup_push(release_tls, knet_h);
 	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_STARTED);
 
 	memset(&msg, 0, sizeof(msg));
@@ -1109,9 +1110,8 @@ void *_handle_recv_from_links_thread(void *data)
 
 		_shrink_defrag_buffers(knet_h);
 	}
-
 	set_thread_status(knet_h, KNET_THREAD_RX, KNET_THREAD_STOPPED);
-
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 

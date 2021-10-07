@@ -569,6 +569,11 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	memset(knet_h, 0, sizeof(struct knet_handle));
 
 	/*
+	 * Key used for TLS variables while logging
+	 */
+	(void)pthread_key_create(&knet_h->log_key, NULL);
+
+	/*
 	 * setting up some handle data so that we can use logging
 	 * also when initializing the library global locks
 	 * and trackers
@@ -645,6 +650,8 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 	if (savederrno) {
 		log_err(knet_h, KNET_SUB_HANDLE, "Unable to get handle mutex lock: %s",
 			strerror(savederrno));
+		release_tls(knet_h);
+		pthread_key_delete(knet_h->log_key);
 		free(knet_h);
 		knet_h = NULL;
 		errno = savederrno;
@@ -722,8 +729,6 @@ knet_handle_t knet_handle_new(knet_node_id_t host_id,
 		goto exit_fail;
 	}
 
-	(void)pthread_key_create(&knet_h->log_key, NULL);
-
 	/*
 	 * start internal threads
 	 */
@@ -787,6 +792,8 @@ int knet_handle_free(knet_handle_t knet_h)
 	qb_list_del(&knet_h->list);
 	_fini_shlib_tracker();
 	pthread_mutex_unlock(&handle_config_mutex);
+	release_tls(knet_h);
+	pthread_key_delete(knet_h->log_key);
 
 	free(knet_h);
 	knet_h = NULL;

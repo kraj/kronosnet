@@ -388,6 +388,7 @@ void *_handle_heartbt_thread(void *data)
 	knet_handle_t knet_h = (knet_handle_t) data;
 	int i = 1;
 
+	pthread_cleanup_push(release_tls, knet_h);
 	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_STARTED);
 
 	while (!shutdown_in_progress(knet_h)) {
@@ -414,6 +415,6 @@ void *_handle_heartbt_thread(void *data)
 	}
 
 	set_thread_status(knet_h, KNET_THREAD_HB, KNET_THREAD_STOPPED);
-
+	pthread_cleanup_pop(1);
 	return NULL;
 }
